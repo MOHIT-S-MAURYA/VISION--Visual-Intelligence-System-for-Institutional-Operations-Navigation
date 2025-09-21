@@ -1,0 +1,3 @@
+Specify APIs (endpoints, request/response models) for all services.
+
+Prepare the FRD/SRS document using all the diagrams we’ve created.

@@ -1,0 +1,154 @@
+## 4️⃣ AI / Computer Vision Service – ER Diagram & Schema
+
+#### **1. StudentEmbedding**
+
+* **Purpose**: Stores vector embeddings for student faces.
+* **Key Fields**:
+
+  * `embedding_id` (UUID, PK): Unique identifier for embedding.
+  * `student_id` (UUID, FK): Reference to student in Department Service.
+  * `vector` (FLOAT\[]): Numerical representation of face.
+  * `created_at` / `updated_at` (TIMESTAMP): For versioning and retraining audit.
+* **Notes**:
+
+  * Stored in **FAISS** for fast similarity search.
+  * Multiple embeddings per student allowed for variations in face images.
+
+---
+
+#### **2. RecognitionJob**
+
+* **Purpose**: Represents a batch AI recognition process for a classroom photo.
+* **Key Fields**:
+
+  * `job_id` (UUID, PK): Unique job identifier.
+  * `session_id` (UUID, FK): Related class session.
+  * `classroom_photo_id` (UUID, FK): Image ID in Media Service.
+  * `status` (ENUM): `Pending`, `Processing`, `Completed`, `Failed`.
+  * `started_at` / `completed_at` (TIMESTAMP): Job timing.
+* **Notes**:
+
+  * Tracks processing state for asynchronous recognition tasks.
+  * Useful for retrying failed jobs or tracking long-running AI processing.
+
+---
+
+#### **3. RecognitionResult**
+
+* **Purpose**: Stores results of AI recognition for each student in a session.
+* **Key Fields**:
+
+  * `result_id` (UUID, PK): Unique result identifier.
+  * `job_id` (UUID, FK): Parent recognition job.
+  * `student_id` (UUID, FK): Recognized student.
+  * `recognized` (BOOLEAN): True if student was detected.
+  * `confidence` (FLOAT): Recognition confidence score (0–1).
+  * `created_at` (TIMESTAMP): Timestamp of result.
+* **Notes**:
+
+  * Used to update **AttendanceRecord** in Attendance Service.
+  * Enables AI performance tracking.
+
+---
+
+#### **4. ModelVersion**
+
+* **Purpose**: Tracks versions of AI models deployed for recognition.
+* **Key Fields**:
+
+  * `model_id` (UUID, PK): Unique model identifier.
+  * `name` (VARCHAR): Model name.
+  * `version` (VARCHAR): Semantic versioning (e.g., v1.0.0).
+  * `description` (TEXT): Details about model or training dataset.
+  * `deployed_at` (TIMESTAMP): Deployment timestamp.
+* **Notes**:
+
+  * Supports auditing and rollback.
+  * Each RecognitionJob can reference the ModelVersion used.
+
+---
+
+#### **5. Student, ClassSession, Media**
+
+* Minimal references to link embeddings, recognition jobs, and results.
+* Student is from Department Service; ClassSession from Attendance Service; Media from Media Service.
+
+---
+
+### **Relationships & Design Highlights**
+
+* **StudentEmbedding → Student**: Each student may have multiple embeddings.
+* **RecognitionJob → ClassSession → Media**: Each job processes a classroom photo for a session.
+* **RecognitionResult → RecognitionJob → Student**: Results for each student per job.
+* **ModelVersion → RecognitionJob**: Tracks which model version performed recognition.
+
+**AI Integration Flow**
+
+1. Classroom photo captured → stored in Media Service.
+2. Attendance Service triggers a RecognitionJob.
+3. AI Service fetches student embeddings from FAISS and image from Media.
+4. RecognitionResult generated with recognized students and confidence.
+5. Attendance Service updates `AttendanceRecord` accordingly.
+
+---
+
+### **Design Principles**
+
+1. **Separation of Concerns**: AI service handles only recognition; attendance updates are done in Attendance Service.
+2. **Scalable & Asynchronous**: Recognition jobs can run asynchronously with job queues.
+3. **Auditability**: Model versioning and recognition logs enable tracking AI performance.
+4. **Integration-Ready**: All references via UUIDs for microservice communication.
+5. **Extensibility**: Supports multiple models, embeddings per student, and additional AI metrics in the future.
+
+---
+
+### **FAISS in AI / Computer Vision Service**
+
+#### **Purpose**
+
+* FAISS (Facebook AI Similarity Search) is optimized for **high-dimensional vector search**, perfect for facial embeddings.
+* It enables **fast nearest neighbor search**, which is critical for real-time face recognition in classrooms.
+
+---
+
+#### **How it works in our architecture**
+
+1. **StudentEmbedding**
+
+   * Embeddings are generated from uploaded student photos.
+   * Instead of storing large vectors in PostgreSQL, they are stored in FAISS index.
+   * Each embedding has a `student_id` as metadata for mapping back to the student.
+
+2. **Recognition Process**
+
+   * Classroom photo is captured and processed by AI Service.
+   * Face embeddings are extracted from the photo.
+   * FAISS performs **similarity search** against stored embeddings to identify students.
+   * Matching results (student\_id + confidence) are returned and logged in `RecognitionResult`.
+
+3. **Database Role**
+
+   * PostgreSQL still stores **metadata** about embeddings:
+
+     * `embedding_id`
+     * `student_id`
+     * Timestamp and audit info (`created_at`, `updated_at`)
+   * FAISS stores the **actual high-dimensional vectors** (the large arrays) for efficient retrieval.
+
+---
+
+#### **Advantages**
+
+* Extremely fast retrieval even with **thousands of students and multiple embeddings per student**.
+* Supports approximate nearest neighbor search for speed without sacrificing much accuracy.
+* Reduces load on relational DB by keeping vectors in a specialized system.
+
+---
+
+**In summary**:
+
+* **FAISS** = stores and searches high-dimensional face embeddings.
+* **PostgreSQL** = stores metadata for embeddings, logging, and traceability.
+* Attendance updates rely on the results returned from FAISS + AI recognition.
+
+---
