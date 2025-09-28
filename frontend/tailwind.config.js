@@ -15,8 +15,9 @@ export default {
           700: "#1d4ed8",
           800: "#1e40af",
           900: "#1e3a8a",
+          950: "#172554",
         },
-        secondary: {
+        gray: {
           50: "#f9fafb",
           100: "#f3f4f6",
           200: "#e5e7eb",
@@ -27,18 +28,20 @@ export default {
           700: "#374151",
           800: "#1f2937",
           900: "#111827",
+          950: "#030712",
         },
         success: {
-          50: "#ecfdf5",
-          100: "#d1fae5",
-          200: "#a7f3d0",
-          300: "#6ee7b7",
-          400: "#34d399",
-          500: "#10b981",
-          600: "#059669",
-          700: "#047857",
-          800: "#065f46",
-          900: "#064e3b",
+          50: "#f0fdf4",
+          100: "#dcfce7",
+          200: "#bbf7d0",
+          300: "#86efac",
+          400: "#4ade80",
+          500: "#22c55e",
+          600: "#16a34a",
+          700: "#15803d",
+          800: "#166534",
+          900: "#14532d",
+          950: "#052e16",
         },
         warning: {
           50: "#fffbeb",
@@ -51,6 +54,7 @@ export default {
           700: "#b45309",
           800: "#92400e",
           900: "#78350f",
+          950: "#451a03",
         },
         error: {
           50: "#fef2f2",
@@ -63,25 +67,39 @@ export default {
           700: "#b91c1c",
           800: "#991b1b",
           900: "#7f1d1d",
+          950: "#450a0a",
         },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "Menlo", "monospace"],
+        mono: ["JetBrains Mono", "Menlo", "Monaco", "monospace"],
       },
       spacing: {
         18: "4.5rem",
         88: "22rem",
+        128: "32rem",
       },
-      borderRadius: {
-        xl: "0.875rem",
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "bounce-gentle": "bounceGentle 2s infinite",
       },
-      boxShadow: {
-        soft: "0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)",
-        medium:
-          "0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        bounceGentle: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
       },
     },
   },
   plugins: [],
+  darkMode: "class",
 };
