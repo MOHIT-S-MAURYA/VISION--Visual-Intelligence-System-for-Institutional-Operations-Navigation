@@ -78,7 +78,7 @@ export const signupSchema = yup.object({
   employee_id: yup
     .string()
     .when('role', {
-      is: (role: string) => [USER_ROLES.TEACHER, USER_ROLES.DEPARTMENT_ADMIN, USER_ROLES.PRINCIPAL_ADMIN].includes(role as any),
+      is: (role: string) => role === USER_ROLES.TEACHER || role === USER_ROLES.DEPARTMENT_ADMIN,
       then: (schema) => schema.required(VALIDATION_MESSAGES.REQUIRED('Employee ID')),
       otherwise: (schema) => schema.notRequired(),
     }),
@@ -219,7 +219,7 @@ export const userCreateSchema = yup.object({
   employee_id: yup
     .string()
     .when('role', {
-      is: (role: string) => [USER_ROLES.TEACHER, USER_ROLES.DEPARTMENT_ADMIN, USER_ROLES.PRINCIPAL_ADMIN].includes(role as any),
+      is: (role: string) => role === USER_ROLES.TEACHER || role === USER_ROLES.DEPARTMENT_ADMIN,
       then: (schema) => schema.required(VALIDATION_MESSAGES.REQUIRED('Employee ID')),
       otherwise: (schema) => schema.notRequired(),
     }),

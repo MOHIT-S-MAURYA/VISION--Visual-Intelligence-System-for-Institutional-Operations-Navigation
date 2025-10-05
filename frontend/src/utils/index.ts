@@ -48,9 +48,9 @@ export { formatters } from './formatters';
 export { default as validators } from './validators';
 
 // Utility type helpers
-export type UtilityFunction<T extends (...args: any[]) => any> = T;
-export type FormatterFunction = UtilityFunction<(value: any, ...args: any[]) => string>;
-export type ValidatorFunction = UtilityFunction<(value: any) => boolean>;
+export type UtilityFunction<T extends (...args: unknown[]) => unknown> = T;
+export type FormatterFunction = UtilityFunction<(value: unknown, ...args: unknown[]) => string>;
+export type ValidatorFunction = UtilityFunction<(value: unknown) => boolean>;
 
 // Common utility combinations
 export const utils = {

@@ -2,6 +2,12 @@ import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse,
 import { toast } from 'react-hot-toast';
 import type { APIResponse, AuthTokens } from '../types';
 
+// Define a custom interface for our requests to avoid using 'any'
+interface InternalAxiosRequestConfig extends AxiosRequestConfig {
+  metadata?: { startTime: number };
+  _retry?: boolean;
+}
+
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const API_TIMEOUT = 30000; // 30 seconds
@@ -85,7 +91,7 @@ const createApiClient = (): AxiosInstance => {
       }
       
       // Add request timestamp for debugging
-      (config as any).metadata = { startTime: Date.now() };
+      (config as InternalAxiosRequestConfig).metadata = { startTime: Date.now() };
       
       return config;
     },
@@ -100,7 +106,7 @@ const createApiClient = (): AxiosInstance => {
     (response) => {
       // Log response time for debugging
       const endTime = Date.now();
-      const startTime = (response.config as any).metadata?.startTime;
+      const startTime = (response.config as InternalAxiosRequestConfig).metadata?.startTime;
       if (startTime) {
         console.debug(`API ${response.config.method?.toUpperCase()} ${response.config.url}: ${endTime - startTime}ms`);
       }
@@ -108,10 +114,10 @@ const createApiClient = (): AxiosInstance => {
       return response;
     },
     async (error: AxiosError) => {
-      const originalRequest = error.config;
+      const originalRequest = error.config as InternalAxiosRequestConfig | undefined;
       
-      if (error.response?.status === 401 && originalRequest && !(originalRequest as any)._retry) {
-        (originalRequest as any)._retry = true;
+      if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+        originalRequest._retry = true;
         
         try {
           const tokens = tokenStorage.get();
@@ -125,6 +131,7 @@ const createApiClient = (): AxiosInstance => {
             tokenStorage.set(newTokens);
             
             // Retry original request with new token
+            originalRequest.headers = originalRequest.headers ?? {};
             originalRequest.headers.Authorization = `Bearer ${newTokens.access}`;
             return client(originalRequest);
           }
@@ -161,7 +168,8 @@ const handleApiError = (error: AxiosError): void => {
   }
   
   const { status, data } = error.response;
-  const message = (data as any)?.message || 'An unexpected error occurred';
+  const responseData = data as { message?: string; errors?: Record<string, string[]> };
+  const message = responseData?.message || 'An unexpected error occurred';
   
   switch (status) {
     case 400:
@@ -178,8 +186,8 @@ const handleApiError = (error: AxiosError): void => {
       break;
     case 422:
       // Validation errors - handle specially
-      if ((data as any)?.errors) {
-        const errors = (data as any).errors;
+      if (responseData?.errors) {
+        const errors = responseData.errors;
         Object.keys(errors).forEach(field => {
           const fieldErrors = errors[field];
           if (Array.isArray(fieldErrors)) {
@@ -205,7 +213,7 @@ const handleApiError = (error: AxiosError): void => {
 const apiRequest = async <T>(
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: string,
-  data?: any,
+  data?: unknown,
   config?: AxiosRequestConfig
 ): Promise<APIResponse<T>> => {
   try {
@@ -228,13 +236,13 @@ export const api = {
   get: <T>(url: string, config?: AxiosRequestConfig): Promise<APIResponse<T>> =>
     apiRequest<T>('GET', url, undefined, config),
     
-  post: <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<APIResponse<T>> =>
+  post: <T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<APIResponse<T>> =>
     apiRequest<T>('POST', url, data, config),
     
-  put: <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<APIResponse<T>> =>
+  put: <T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<APIResponse<T>> =>
     apiRequest<T>('PUT', url, data, config),
     
-  patch: <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<APIResponse<T>> =>
+  patch: <T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<APIResponse<T>> =>
     apiRequest<T>('PATCH', url, data, config),
     
   delete: <T>(url: string, config?: AxiosRequestConfig): Promise<APIResponse<T>> =>
@@ -288,7 +296,7 @@ export const downloadFile = async (url: string, filename?: string): Promise<void
 };
 
 // Query parameter helpers
-export const buildQueryParams = (params: Record<string, any>): string => {
+export const buildQueryParams = (params: Record<string, unknown>): string => {
   const searchParams = new URLSearchParams();
   
   Object.entries(params).forEach(([key, value]) => {
@@ -304,7 +312,7 @@ export const buildQueryParams = (params: Record<string, any>): string => {
   return searchParams.toString();
 };
 
-export const getUrl = (endpoint: string, params?: Record<string, any>): string => {
+export const getUrl = (endpoint: string, params?: Record<string, unknown>): string => {
   const queryString = params ? buildQueryParams(params) : '';
   return queryString ? `${endpoint}?${queryString}` : endpoint;
 };
@@ -321,7 +329,7 @@ export interface PaginationParams {
 export const getPaginatedUrl = (
   endpoint: string,
   pagination: PaginationParams = {},
-  filters?: Record<string, any>
+  filters?: Record<string, unknown>
 ): string => {
   const params = {
     page: pagination.page || 1,
@@ -338,9 +346,9 @@ export const getPaginatedUrl = (
 // Cache management utilities
 export const cache = {
   // Simple in-memory cache for API responses
-  _storage: new Map<string, { data: any; timestamp: number; ttl: number }>(),
+  _storage: new Map<string, { data: unknown; timestamp: number; ttl: number }>(),
   
-  set: (key: string, data: any, ttlInMs: number = 300000): void => { // 5 minutes default
+  set: (key: string, data: unknown, ttlInMs: number = 300000): void => { // 5 minutes default
     cache._storage.set(key, {
       data,
       timestamp: Date.now(),
@@ -348,7 +356,7 @@ export const cache = {
     });
   },
   
-  get: (key: string): any | null => {
+  get: (key: string): unknown | null => {
     const cached = cache._storage.get(key);
     if (!cached) return null;
     
@@ -373,7 +381,7 @@ export const cache = {
     }
   },
   
-  generateKey: (url: string, params?: any): string => {
+  generateKey: (url: string, params?: unknown): string => {
     return `${url}:${JSON.stringify(params || {})}`;
   },
 };
@@ -381,11 +389,11 @@ export const cache = {
 // Cached API request
 export const cachedApiRequest = async <T>(
   url: string,
-  params?: any,
+  params?: Record<string, unknown>,
   ttlInMs: number = 300000
 ): Promise<APIResponse<T>> => {
   const cacheKey = cache.generateKey(url, params);
-  const cached = cache.get(cacheKey);
+  const cached = cache.get(cacheKey) as APIResponse<T> | null;
   
   if (cached) {
     console.debug(`Cache hit for ${cacheKey}`);

@@ -71,7 +71,7 @@ export const storage = {
     try {
       let total = 0;
       for (const key in localStorage) {
-        if (localStorage.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
           total += localStorage.getItem(key)?.length || 0;
           total += key.length;
         }
